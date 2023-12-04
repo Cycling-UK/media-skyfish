@@ -1,5 +1,5 @@
 {
-  "name": "drupal/media_skyfish",
+  "name": "cycling_uk/media_skyfish",
   "description": "media_skyfish is lightweight integration of Skyfish API into Drupal media handling",
   "type": "drupal-module",
   "homepage": "https://drupal.org/project/media_skyfish",
