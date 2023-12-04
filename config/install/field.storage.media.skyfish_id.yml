@@ -1,0 +1,22 @@
+langcode: en
+status: true
+dependencies:
+  module:
+    - media
+  enforced:
+    module:
+      - media_skyfish
+id: media.skyfish_id
+field_name: skyfish_id
+entity_type: media
+type: integer
+settings:
+  unsigned: false
+  size: normal
+module: media_skyfish
+locked: true
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

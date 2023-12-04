@@ -1,0 +1,35 @@
+<?php
+
+/**
+ * @file
+ * Contains media_skyfish.module.
+ */
+
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function media_skyfish_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the media_skyfish module.
+    case 'help.page.media_skyfish':
+      $output = '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Provides skyfish.com integration to media module') . '</p>';
+    default:
+  }
+  return $output;
+}
+
+
+/**
+ * Implements hook_form_alter().
+ *
+ * Make the Skyfish ID field read-only in the Media edit forms.
+ */
+function media_skyfish_form_media_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  if (isset($form['skyfish_id'])) {
+    $form['skyfish_id']['widget'][0]['value']['#attributes']['readonly'] = 'readonly';
+  }
+}

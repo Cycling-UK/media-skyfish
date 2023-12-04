@@ -1,0 +1,56 @@
+.skyfish-results .form-type--boolean {
+  margin: 0 5px 5px 0;
+}
+
+.skyfish-results .form-checkboxes .form-item {
+  display: inline-block;
+  vertical-align: top;
+  position: relative;
+}
+
+
+.skyfish-results .form-type--boolean .form-boolean.form-checkbox {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  float: none;
+  margin-left: 0;
+  transform: none;
+  width: 25px;
+  height: 25px;
+}
+
+.skyfish-results .info {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 25px;
+  height: 25px;
+}
+
+.skyfish-results dl.popup {
+  z-index: 100;
+  position: absolute;
+  box-sizing: border-box;
+  width: 310px;
+  top: 25px;
+  right: 0;
+  padding: 5px;
+}
+
+.skyfish-results dt {
+  margin-top: 0.5em;
+}
+
+.skyfish-results dd {
+  margin: 0;
+  padding: 0;
+}
+
+.skyfish-results .item-list ul {
+  margin-left: 0;
+}
+
+.skyfish-results li {
+  margin-left: 0;
+}

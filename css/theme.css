@@ -1,0 +1,17 @@
+.skyfish-results .info {
+  background: url(info.svg);
+  background-size: contain;
+}
+
+.skyfish-results dl.popup {
+  font-size: 90%;
+  line-height: 1.1;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid #999;
+  box-shadow: 0 1px 3px rgb(0, 0, 0, 0.25);
+}
+
+.skyfish-results dt {
+  font-weight: bold;
+}
+

@@ -1,0 +1,5 @@
+media_skyfish_api_key: apikey
+media_skyfish_api_secret: apisecret
+media_skyfish_global_user: username
+media_skyfish_global_password: password
+media_skyfish_cache: '60'

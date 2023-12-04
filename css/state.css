@@ -1,0 +1,8 @@
+.skyfish-results dl.popup {
+  display: none;
+}
+
+.skyfish-results .form-type-checkbox .info:hover dl.popup,
+.skyfish-results .form-type--checkbox .info:hover dl.popup {
+  display: block;
+}
