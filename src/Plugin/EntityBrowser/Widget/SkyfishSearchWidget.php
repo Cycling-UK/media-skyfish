@@ -7,6 +7,7 @@ use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\entity_browser\Annotation\EntityBrowserWidget;
 use Drupal\entity_browser\WidgetBase;
 use Drupal\entity_browser\WidgetValidationManager;
 use Drupal\entity_browser\Element\EntityBrowserPagerElement;
@@ -533,8 +534,11 @@ class SkyfishSearchWidget extends WidgetBase {
       $folder = $keyed_folders[$folder_id];
       do {
         $names[] = $folder->name;
-        $folder = $keyed_folders[$folder->parent];
-      } while ($folder->parent);
+        $parent = $folder->parent;
+        if ($parent) {
+          $folder = $keyed_folders[$parent];
+        }
+      } while ($parent);
       // Skip folder if root folder is set and this folder has a different root.
       if ($this->configuration['root_folder_id'] != 0 && $this->configuration['root_folder_id'] != $folder->id) {
         continue;
