@@ -145,7 +145,6 @@ class ApiService {
       $response = json_decode($request->getBody()->getContents(), TRUE, 512, JSON_THROW_ON_ERROR);
     } catch (JsonException $e) {
     }
-
     return $response['token'] ?? FALSE;
   }
 
@@ -176,6 +175,8 @@ class ApiService {
    */
   protected function doRequest(string $uri) {
     try {
+      #\Drupal::messenger()->addMessage("GET " . self::API_BASE_URL . $uri);
+      #\Drupal::messenger()->addMessage("Authorization: " . $this->header);
       $request = $this
         ->client
         ->request(
@@ -192,9 +193,11 @@ class ApiService {
         return FALSE;
       }
     } catch (GuzzleException $e) {
+      $this->logger->error('Guzzle Exception: ' . $e->getMessage());
     }
     if (isset($request)) {
       try {
+        #\Drupal::messenger()->addMessage($request->getBody());
         return json_decode($request->getBody(), FALSE, 512, JSON_THROW_ON_ERROR);
       } catch (Exception $e) {
         return FALSE;
@@ -218,9 +221,11 @@ class ApiService {
       409 => 'We encountered a conflict when trying to process your update. Try applying your update again.',
       500 => 'We encountered a problem parsing your request and can not say what went wrong. Please provide us with the “X-Cbx-Request-Id” from the response as it will help us debug the problem.',
     ];
-
     if (isset($messages[$status_code])) {
       $this->logger->error($messages[$status_code]);
+    }
+    else {
+      $this->logger->error("Unknown status code: " . $status_code);
     }
   }
 
@@ -284,6 +289,7 @@ class ApiService {
       $string .= 'q=' . urlencode($search_string);
     }
     $query_options = ['media_count=' . $this->search_count];
+    $query_options[] = 'recursive=true';
     $query_options[] = 'return_values=title+description+byline+copyright+unique_media_id+thumbnail_url_ssl+keywords+filename+created+folder_ids+file_disksize+width+height';
     $query_options[] = 'order=' . $this->results_order;
     // ToDo: user-settings for thumbnail size?

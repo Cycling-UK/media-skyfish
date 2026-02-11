@@ -5,8 +5,13 @@ namespace Drupal\media_skyfish\Plugin\EntityBrowser\Widget;
 use Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException;
 use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\File\Exception\FileException;
+use Drupal\Core\File\Exception\InvalidStreamWrapperException;
+use Drupal\Core\File\FileExists;
 use Drupal\Core\File\FileSystemInterface;
+use Drupal\Core\FileTransfer\FileTransferException;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\StringTranslation\ByteSizeMarkup;
 use Drupal\entity_browser\Annotation\EntityBrowserWidget;
 use Drupal\entity_browser\WidgetBase;
 use Drupal\entity_browser\WidgetValidationManager;
@@ -137,12 +142,13 @@ class SkyfishSearchWidget extends WidgetBase {
     $keyed_folders = $this->getFolderTree();
     $root_folder_name = 'all folders';
 
-    // Drop-down list of top three levels of folders.
-    if ($this->configuration['root_folder_id']) {
-      $root_folder = $keyed_folders[$this->configuration['root_folder_id']];
+    // Drop-down list of top THREE levels of folders.
+    $root_folder_id = $this->configuration['root_folder_id'];
+    if ($root_folder_id && array_key_exists($root_folder_id, $keyed_folders)) {
+      $root_folder = $keyed_folders[$root_folder_id];
       $root_folder_name = $root_folder->name;
       $keyed_folders = $root_folder->children;
-      $folder_options = [implode('+', $root_folder->folder_ids) => '-- All folders --'];
+      $folder_options[$root_folder->id] = '-- All folders --';
     }
     else {
       $folder_options = ['' => '-- All folders --'];
@@ -151,13 +157,13 @@ class SkyfishSearchWidget extends WidgetBase {
       if (in_array($folder->id, $this->configuration['omit_folder_ids'])) {
         continue;
       }
-      $folder_options[implode('+', $folder->folder_ids)] = $folder->name;
+      $folder_options[$folder->id] = $folder->name;
       if (isset($folder->children)) {
         foreach ($folder->children as $child) {
-          $folder_options[implode('+', $child->folder_ids)] = $folder->name . ' | ' . $child->name;
+          $folder_options[$child->id] = $folder->name . ' | ' . $child->name;
           if (isset($child->children)) {
             foreach ($child->children as $grandchild) {
-              $folder_options[implode('+', $grandchild->folder_ids)] = $folder->name . ' | ' . $child->name . ' | ' . $grandchild->name;
+              $folder_options[$grandchild->id] = $folder->name . ' | ' . $child->name . ' | ' . $grandchild->name;
             }
           }
         }
@@ -348,10 +354,16 @@ class SkyfishSearchWidget extends WidgetBase {
     // Download URL is temporary, only lasts for 5 minutes.
     $download_url = $this->connect->getItemDownloadUrl($item->id);
     // Save file in the system from the url.
-    $file = system_retrieve_file($download_url, $folder . $item->filename, TRUE);
-    // If file was not saved, throw an error.
-    if (!$file) {
-      $this->logger->error('Unable to save file for @filename', ['@filename' => $item->filename]);
+    try {
+      $data = (string) \Drupal::httpClient()->get($download_url)->getBody();
+      // For managed files, use this:
+      $file = \Drupal::service('file.repository')->writeData($data, $folder.$item->filename, FileExists::Replace);
+    }
+    catch (FileTransferException $e) {
+      \Drupal::messenger()->addError(t('Failed to fetch file due to error "%error"', ['%error' => $e->getMessage()]));
+    }
+    catch (FileException | InvalidStreamWrapperException $e) {
+      \Drupal::messenger()->addError(t('Failed to save file due to error "%error"', ['%error' => $e->getMessage()]));
     }
     // Return the saved file details.
     return $file;
@@ -459,7 +471,7 @@ class SkyfishSearchWidget extends WidgetBase {
       $data_html .= '<dt>Copyright</dt><dd>' . $copyright . '</dd>';
       $data_html .= '<dt>Keywords</dt><dd>' . $renderer->render($keyword_list) . '</dd>';
       $data_html .= '<dt>Filename</dt><dd>' . $filename . '</dd>';
-      $data_html .= '<dt>File size</dt><dd>' . format_size($file_size) . '</dd>';
+      $data_html .= '<dt>File size</dt><dd>' . ByteSizeMarkup::create($file_size) . '</dd>';
       if ($width) {
         $data_html .= '<dt>Pixels</dt><dd>' . $width . '×' . $height . ' (' . $megapixels . ' Mpixels)</dd>';
       }
@@ -562,16 +574,13 @@ class SkyfishSearchWidget extends WidgetBase {
     $folders = $this->connect->getFolders();
     if (is_array($folders)) {
       foreach ($folders as $folder) {
-        if (in_array('TRASH', $folder->permissions->groups, TRUE)) {
-          continue;
-        }
         $folder->folder_ids = [$folder->id];
         $keyed_folders[$folder->id] = $folder;
       }
     }
     if (count($keyed_folders) === 0) {
       \Drupal::messenger()
-        ->addError($this->t('No folders found. Check Skyfish settings: <a href="@link">@link</a>', ['@link' => '/admin/config/media/media_skyfish']));
+        ->addError($this->t('No folders found. Check Skyfish user permissions and settings: <a href="@link">@link</a>', ['@link' => '/admin/config/media/media_skyfish']));
     }
     return $keyed_folders;
   }

@@ -32,14 +32,14 @@ class ConfigService {
   protected $username;
 
   /**
-   * Skyfish api key.
+   * Skyfish API key.
    *
    * @var string
    */
   protected $key;
 
   /**
-   * Skyfish apie secret key.
+   * Skyfish API secret key.
    *
    * @var string
    */
