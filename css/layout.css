@@ -1,3 +1,10 @@
+.entity-browser-form .form-radios .form-item {
+  display: inline-block;
+  vertical-align: top;
+  position: relative;
+  margin-right: 1em;
+}
+
 .skyfish-results .form-type--boolean {
   margin: 0 5px 5px 0;
 }

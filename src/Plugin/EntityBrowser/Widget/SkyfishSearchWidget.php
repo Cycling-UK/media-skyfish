@@ -136,9 +136,53 @@ class SkyfishSearchWidget extends WidgetBase {
    * @inheritdoc
    */
   public function getForm(array &$original_form, FormStateInterface $form_state, array $additional_widget_parameters): array {
-
     $form = parent::getForm($original_form, $form_state, $additional_widget_parameters);
+    $this->buildSearchForm($form, $form_state);
+    // Results form section.
+    if ($form_state->getValue('search_button') || ($form_state->getTriggeringElement() && $form_state->getTriggeringElement()['#array_parents'][1] === 'pager')) {
+      $form = $this->buildResultsForm($form_state, $form);
+    }
+    else {
+      unset($form['actions']);
+    }
+    // Attach CSS.
+    $form['#attached']['library'][] = 'media_skyfish/item_display';
+    return $form;
+  }
 
+  /**
+   * @inheritdoc
+   */
+  public function submit(array &$element, array &$form, FormStateInterface $form_state): void {
+    $form_values = $form_state->getValues();
+    $media = [];
+    // Get item_id keys where value is non-zero (selected).
+    $selected_item_ids = [];
+    foreach ($form_values['items'] as $item_id) {
+      if ($item_id != 0) {
+        $selected_item_ids[] = $item_id;
+      }
+    }
+    // Get media item data.
+    foreach ($selected_item_ids as $selected_item_id) {
+      $media_item = $this->connect->getItem($selected_item_id);
+      $media[$selected_item_id] = $media_item;
+    }
+    // Save the media items.
+    $saved_items = $this->saveItems($media);
+    // Pass selected items to the entity field they are to be added to.
+    $this->selectEntities($saved_items, $form_state);
+  }
+
+  /**
+   * Return Form API elements for the Search form.
+   *
+   * @param $form
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *
+   * @return void
+   */
+  protected function buildSearchForm(&$form, FormStateInterface $form_state): void {
     $keyed_folders = $this->getFolderTree();
     $root_folder_name = 'all folders';
 
@@ -177,85 +221,34 @@ class SkyfishSearchWidget extends WidgetBase {
         $media_type_names[] = $type;
       }
     }
-    if (count($media_type_names)) {
-      $info_text = $this->t('Items in %folder, of type %media_types.', [
-        '%folder' => $root_folder_name,
-        '%media_types' => implode(' or ', $media_type_names),
-      ]);
-    }
-    else {
-      $info_text = $this->t('Items in %folder, of any type.', [
-        '%folder' => $root_folder_name,
-        '%media_types' => implode(' or ', $media_type_names),
-      ]);
-    }
-    $form['settings_info'] = [
-      '#title' => $this->t('Skyfish'),
-      '#type' => 'item',
-      '#markup' => $info_text,
-    ];
-
-    $form['folder'] = [
-      '#type' => 'select',
-      '#title' => 'Limit to Sub-folder',
-      '#options' => $folder_options,
-    ];
-
-    // Search form section.
-    $this->buildSearchForm($form, $form_state);
-    // Results form section.
-    if ($form_state->getValue('search_button') || ($form_state->getTriggeringElement() && $form_state->getTriggeringElement()['#array_parents'][1] === 'pager')) {
-      $form = $this->buildResultsForm($form_state, $form);
-    }
-    else {
-      unset($form['actions']);
-    }
-    return $form;
-  }
-
-  /**
-   * @inheritdoc
-   */
-  public function submit(array &$element, array &$form, FormStateInterface $form_state): void {
-    $form_values = $form_state->getValues();
-    $media = [];
-    // Get item_id keys where value is non-zero (selected).
-    $selected_item_ids = [];
-    foreach ($form_values['items'] as $item_id) {
-      if ($item_id != 0) {
-        $selected_item_ids[] = $item_id;
-      }
-    }
-    // Get media item data.
-    foreach ($selected_item_ids as $selected_item_id) {
-      $media_item = $this->connect->getItem($selected_item_id);
-      $media[$selected_item_id] = $media_item;
-    }
-    // Save the media items.
-    $saved_items = $this->saveItems($media);
-    // Pass selected items to the entity field they are to be added to.
-    $this->selectEntities($saved_items, $form_state);
-  }
-
-  /**
-   * Return Form API elements for the Search form.
-   *
-   * @param $form
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   *
-   * @return void
-   */
-  protected function buildSearchForm(&$form, FormStateInterface $form_state): void {
     $form['search_string'] = [
       '#title' => $this->t('Search'),
       '#type' => 'textfield',
       '#default_value' => $form_state->get('search_string'),
-      '#description' => $this->t('Enter search terms/keywords, or leave empty to browse all. Prefix any term with "-" to exclude results with that term.'),
+      '#description' => $this->t('Enter search words, or leave empty to browse. Use "double quotes" to search for word combinations.'),
     ];
-    $form['results_order'] = [
+    $form['details'] = ['#type' => 'details', '#title' => $this->t('Search options')];
+    $form['details']['query_type'] = [
+      '#title' => $this->t('Query type'),
+      '#type' => 'radios',
+      '#options' => [
+        'standard' => $this->t('Standard (match <strong>any</strong> search word, including auto-tags.)'),
+        'exact' => $this->t('Exact (match <strong>all</strong> search words. Prefix a word with "-" to exclude it.)'),
+      ],
+      '#default_value' => $form_state->get('query_type') ?? 'standard',
+    ];
+    $form['details']['folder'] = [
+      '#type' => 'select',
+      '#title' => 'Limit to Sub-folder',
+      '#options' => $folder_options,
+    ];
+    $form['details']['results_order'] = [
       '#title' => $this->t('Results order'),
       '#type' => 'radios',
-      '#options' => ['created' => 'Date (most recent first)', 'relevance' => 'Search keywords relevance'],
+      '#options' => [
+        'created' => $this->t('Date (most recent first)'),
+        'relevance' => $this->t('Best match'),
+      ],
       '#default_value' => $form_state->get('results_order') ?? 'created',
     ];
     $form['search_button'] = [
@@ -263,6 +256,7 @@ class SkyfishSearchWidget extends WidgetBase {
       '#name' => 'search',
       '#value' => $this->t('Search / Browse'),
     ];
+
   }
 
   /**
@@ -357,12 +351,10 @@ class SkyfishSearchWidget extends WidgetBase {
     try {
       $data = (string) \Drupal::httpClient()->get($download_url)->getBody();
       // For managed files, use this:
-      $file = \Drupal::service('file.repository')->writeData($data, $folder.$item->filename, FileExists::Replace);
-    }
-    catch (FileTransferException $e) {
+      $file = \Drupal::service('file.repository')->writeData($data, $folder . $item->filename, FileExists::Replace);
+    } catch (FileTransferException $e) {
       \Drupal::messenger()->addError(t('Failed to fetch file due to error "%error"', ['%error' => $e->getMessage()]));
-    }
-    catch (FileException | InvalidStreamWrapperException $e) {
+    } catch (FileException|InvalidStreamWrapperException $e) {
       \Drupal::messenger()->addError(t('Failed to save file due to error "%error"', ['%error' => $e->getMessage()]));
     }
     // Return the saved file details.
@@ -381,6 +373,7 @@ class SkyfishSearchWidget extends WidgetBase {
     if ($form_state->getValue('search_button')) {
       $form_state->set('search_string', $form_state->getValue('search_string'));
       $form_state->set('search_folder', $form_state->getValue('folder'));
+      $form_state->set('query_type', $form_state->getValue('query_type'));
       $form_state->set('results_order', $form_state->getValue('results_order'));
       EntityBrowserPagerElement::setCurrentPage($form_state);
     }
@@ -389,6 +382,7 @@ class SkyfishSearchWidget extends WidgetBase {
     $offset = ($page - 1) * $per_page;
     $this->connect->setSearchOffsetCount($offset, $per_page);
     $this->connect->setSearchFolderIds($form_state->get('search_folder'));
+    $this->connect->setQueryType($form_state->get('query_type'));
     $this->connect->setResultsOrder($form_state->get('results_order'));
     $media_types = [];
     foreach ($this->configuration['media_types'] as $key => $value) {
@@ -404,12 +398,13 @@ class SkyfishSearchWidget extends WidgetBase {
     $total_pages = ceil($total_found / $per_page);
     $found_items = $search_result['media'];
     $values = [
-      '@total' => $total_found,
-      '@showing' => $item_count,
-      '@start' => $offset + 1,
-      '@end' => $offset + $item_count,
-      '@page' => $page,
-      '@pages' => $total_pages,
+      '@total' => number_format($total_found, 0),
+      '@showing' => number_format($item_count, 0),
+      '@results_order' => $form_state->get('results_order') === 'created' ? 'most recent first' : 'best match first',
+      '@start' => number_format($offset + 1, 0),
+      '@end' => number_format($offset + $item_count, 0),
+      '@page' => number_format($page, 0),
+      '@pages' => number_format($total_pages, 0),
     ];
     if ($results_offset == 0) {
       if ($total_found == 0) {
@@ -419,14 +414,14 @@ class SkyfishSearchWidget extends WidgetBase {
         $results_message = $this->t('Found <strong>one item</strong> for this search:');
       }
       elseif ($total_found == $item_count) {
-        $results_message = $this->t('Found <strong>@total items</strong>, showing all @showing:', $values);
+        $results_message = $this->t('Found <strong>@total items</strong>, showing all @showing, @results_order:', $values);
       }
       else {
-        $results_message = $this->t('Found <strong>@total items</strong>, showing items 1 to @showing (page 1 of @pages):', $values);
+        $results_message = $this->t('Found <strong>@total items</strong>, showing items 1 to @showing (page 1 of @pages), @results_order:', $values);
       }
     }
     else {
-      $results_message = $this->t('Found <strong>@total items</strong>, showing @start to @end (page @page of @pages):', $values);
+      $results_message = $this->t('Found <strong>@total items</strong>, showing @start to @end (page @page of @pages), $results_order:', $values);
     }
     $form['result_count'] = [
       '#type' => 'html_tag',

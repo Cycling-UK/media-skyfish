@@ -87,6 +87,8 @@ class ApiService {
 
   private array $search_media_types = [];
 
+  private string $query_type = 'standard';
+
   private string $results_order = 'relevance';
 
   /**
@@ -283,6 +285,19 @@ class ApiService {
     $this->results_order = $order;
   }
 
+  public function setQueryType(string $type) {
+    $this->query_type = $type;
+  }
+
+  /**
+   * Call the Skyfish API.
+   *
+   * Documentation: https://api.skyfish.com
+   *
+   * @param $search_string
+   *
+   * @return array
+   */
   public function getResultsForSearch($search_string): array {
     $string = '/search?';
     if ($search_string) {
@@ -291,6 +306,9 @@ class ApiService {
     $query_options = ['media_count=' . $this->search_count];
     $query_options[] = 'recursive=true';
     $query_options[] = 'return_values=title+description+byline+copyright+unique_media_id+thumbnail_url_ssl+keywords+filename+created+folder_ids+file_disksize+width+height';
+    if ($this->query_type === 'exact') {
+      $query_options[] = 'query_type=strict_and_search';
+    }
     $query_options[] = 'order=' . $this->results_order;
     // ToDo: user-settings for thumbnail size?
     $query_options[] = 'thumbnail_size=320px';
