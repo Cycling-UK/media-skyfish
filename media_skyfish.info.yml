@@ -2,7 +2,7 @@ name: Media Skyfish
 type: module
 description: Provides skyfish.com integration.
 core_version_requirement: ^10 || ^11
-# version: 8.x-1.0-alpha1
+version: 1.1.0
 package: Media
 dependencies:
   - entity_browser:entity_browser
